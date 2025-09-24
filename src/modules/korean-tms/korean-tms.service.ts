@@ -22,9 +22,6 @@ export class KoreanTmsService {
     private settlementsRepository: Repository<Settlement>,
   ) {}
 
-  /**
-   * Get comprehensive Korean TMS statistics
-   */
   async getKoreanTmsStats() {
     try {
       const [
@@ -52,7 +49,7 @@ export class KoreanTmsService {
         this.settlementsRepository.count({ where: { status: 'COMPLETED' } }),
         this.settlementsRepository
           .createQueryBuilder('settlement')
-          .select('SUM(settlement.amount)', 'total')
+          .select('SUM(settlement.total_amount)', 'total')
           .getRawOne()
       ]);
 
@@ -68,11 +65,11 @@ export class KoreanTmsService {
         pendingSettlements,
         completedSettlements,
         totalAmount: totalAmount?.total || 0,
-        orders: totalSettlements, // Using settlements as proxy for orders
+        orders: totalSettlements,
         pendingOrders: pendingSettlements,
         inTransitOrders: assignedAssets,
         completedOrders: completedSettlements,
-        emergencyOrders: 0 // Would need separate emergency tracking
+        emergencyOrders: 0
       };
     } catch (error) {
       console.error('Error fetching Korean TMS stats:', error);
@@ -80,16 +77,12 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Get all branches with enhanced data
-   */
   async getAllBranches() {
     try {
       const branches = await this.branchesRepository.find({
         order: { branch_name: 'ASC' }
       });
       
-      // Add asset count for each branch
       const branchesWithStats = await Promise.all(
         branches.map(async (branch) => {
           const assetCount = await this.assetsRepository.count({
@@ -109,20 +102,16 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Get all clients with enhanced data
-   */
   async getAllClients() {
     try {
       const clients = await this.clientsRepository.find({
         order: { client_name: 'ASC' }
       });
       
-      // Add settlement count for each client
       const clientsWithStats = await Promise.all(
         clients.map(async (client) => {
           const settlementCount = await this.settlementsRepository.count({
-            where: { settlement_id: client.client_id } // Using settlement_id instead
+            where: { client_id: client.client_id }
           });
           return {
             ...client,
@@ -138,22 +127,17 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Get all assets with enhanced data
-   */
   async getAllAssets() {
     try {
       const assets = await this.assetsRepository.find({
         order: { license_plate: 'ASC' }
       });
       
-      // Add current order information for each asset
       const assetsWithOrders = await Promise.all(
         assets.map(async (asset) => {
-          // Find if this asset has any active settlements (proxy for orders)
           const activeSettlement = await this.settlementsRepository.findOne({
             where: { 
-              settlement_id: asset.asset_id, // Using settlement_id instead
+              settlement_id: asset.asset_id,
               status: 'PENDING'
             }
           });
@@ -177,41 +161,28 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Get all waypoints with enhanced data
-   */
   async getAllWaypoints() {
     try {
-      const waypoints = await this.waypointsRepository.find({
+      return await this.waypointsRepository.find({
         order: { waypoint_name: 'ASC' }
       });
-      
-      return waypoints;
     } catch (error) {
       console.error('Error fetching waypoints:', error);
       throw new BadRequestException('Failed to fetch waypoints');
     }
   }
 
-  /**
-   * Get all settlements with enhanced data
-   */
   async getAllSettlements() {
     try {
-      const settlements = await this.settlementsRepository.find({
+      return await this.settlementsRepository.find({
         order: { settlement_date: 'DESC' }
       });
-      
-      return settlements;
     } catch (error) {
       console.error('Error fetching settlements:', error);
       throw new BadRequestException('Failed to fetch settlements');
     }
   }
 
-  /**
-   * Create a new branch
-   */
   async createBranch(branchData: Partial<Branch>) {
     try {
       const branch = this.branchesRepository.create(branchData);
@@ -222,9 +193,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Create a new client
-   */
   async createClient(clientData: Partial<Client>) {
     try {
       const client = this.clientsRepository.create(clientData);
@@ -235,9 +203,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Create a new asset
-   */
   async createAsset(assetData: Partial<Asset>) {
     try {
       const asset = this.assetsRepository.create(assetData);
@@ -248,9 +213,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Create a new waypoint
-   */
   async createWaypoint(waypointData: Partial<Waypoint>) {
     try {
       const waypoint = this.waypointsRepository.create(waypointData);
@@ -261,9 +223,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Create a new settlement
-   */
   async createSettlement(settlementData: Partial<Settlement>) {
     try {
       const settlement = this.settlementsRepository.create(settlementData);
@@ -274,9 +233,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Update asset status
-   */
   async updateAssetStatus(assetId: number, status: string) {
     try {
       const asset = await this.assetsRepository.findOne({
@@ -298,9 +254,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Get assets by status
-   */
   async getAssetsByStatus(status: string) {
     try {
       return await this.assetsRepository.find({
@@ -313,9 +266,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Get settlements by status
-   */
   async getSettlementsByStatus(status: string) {
     try {
       return await this.settlementsRepository.find({
@@ -328,9 +278,6 @@ export class KoreanTmsService {
     }
   }
 
-  /**
-   * Get daily statistics
-   */
   async getDailyStats(date?: Date) {
     try {
       const targetDate = date || new Date();
@@ -350,7 +297,7 @@ export class KoreanTmsService {
         }),
         this.settlementsRepository
           .createQueryBuilder('settlement')
-          .select('SUM(settlement.amount)', 'total')
+          .select('SUM(settlement.total_amount)', 'total')
           .where('settlement.settlement_date BETWEEN :start AND :end', {
             start: startOfDay,
             end: endOfDay

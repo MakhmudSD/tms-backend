@@ -1,10 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
-/**
- * Branch Entity - Korean TMS Schema
- * Maps to the tms.branches table in the database
- */
 @Entity({ name: 'branches', schema: 'tms' })
 export class Branch {
   @ApiProperty({ description: 'Branch ID', example: 1 })

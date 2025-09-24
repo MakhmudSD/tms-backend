@@ -1,10 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
-/**
- * Waypoint Entity - Korean TMS Schema
- * Maps to the tms.waypoints table in the database
- */
 @Entity({ name: 'waypoints', schema: 'tms' })
 export class Waypoint {
   @ApiProperty({ description: 'Waypoint ID', example: 1 })
