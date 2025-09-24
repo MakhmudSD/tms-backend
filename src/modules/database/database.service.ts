@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { User } from '../users/user.entity';
@@ -7,274 +7,218 @@ import { Driver } from '../drivers/driver.entity';
 import { Order } from '../orders/order.entity';
 
 @Injectable()
-export class DatabaseService implements OnModuleInit {
-  private readonly logger = new Logger(DatabaseService.name);
-  private isConnected = false;
-
+export class DatabaseService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private usersRepository: Repository<User>,
     @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    private rolesRepository: Repository<Role>,
     @InjectRepository(Driver)
-    private readonly driverRepository: Repository<Driver>,
+    private driversRepository: Repository<Driver>,
     @InjectRepository(Order)
-    private readonly orderRepository: Repository<Order>,
-    private readonly dataSource: DataSource,
+    private ordersRepository: Repository<Order>,
+    private dataSource: DataSource,
   ) {}
 
-  async onModuleInit() {
-    await this.checkConnection();
-  }
-
   /**
-   * Check if database connection exists and is active
+   * Check database connection status
    */
-  async checkConnection(): Promise<boolean> {
+  async checkConnectionStatus() {
     try {
-      if (this.isConnected && this.dataSource.isInitialized) {
-        this.logger.log('✅ Database connection already exists and is active');
-        return true;
-      }
-
-      // Test the connection
       await this.dataSource.query('SELECT 1');
-      this.isConnected = true;
-      this.logger.log('✅ Database connection established successfully');
-      return true;
+      console.log('✅ Database connection established successfully');
+      return { connected: true, initialized: this.dataSource.isInitialized };
     } catch (error) {
-      this.isConnected = false;
-      this.logger.error('❌ Database connection failed:', error.message);
-      throw new Error(`Database connection failed: ${error.message}`);
+      console.error('❌ Database connection failed:', error.message);
+      return { connected: false, initialized: this.dataSource.isInitialized, error: error.message };
     }
   }
 
   /**
-   * Get connection status
-   */
-  getConnectionStatus(): { connected: boolean; initialized: boolean } {
-    return {
-      connected: this.isConnected,
-      initialized: this.dataSource.isInitialized,
-    };
-  }
-
-  /**
-   * Fetch all users with their roles
+   * Get all users with their roles
    */
   async getAllUsers(): Promise<User[]> {
     try {
-      await this.checkConnection();
-      const users = await this.userRepository.find({
-        relations: ['role'],
-        select: [
-          'user_id',
-          'login_id',
-          'user_name',
-          'email',
-          'phone_number',
-          'status_code',
-          'created_at',
-          'updated_at',
-        ],
-      });
-      this.logger.log(`✅ Fetched ${users.length} users from database`);
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
+      }
+      const users = await this.usersRepository.find({ relations: ['role'] });
+      console.log(`✅ Fetched ${users.length} users from database`);
       return users;
     } catch (error) {
-      this.logger.error('❌ Error fetching users:', error.message);
-      throw new Error(`Failed to fetch users: ${error.message}`);
+      console.error('Failed to fetch users:', error.message);
+      throw new InternalServerErrorException(`Failed to retrieve users: ${error.message}`);
     }
   }
 
   /**
-   * Fetch user by ID
+   * Get user by ID with their role
    */
-  async getUserById(id: number): Promise<User | null> {
+  async getUserById(id: number): Promise<User> {
     try {
-      await this.checkConnection();
-      const user = await this.userRepository.findOne({
-        where: { user_id: id },
-        relations: ['role'],
-        select: [
-          'user_id',
-          'login_id',
-          'user_name',
-          'email',
-          'phone_number',
-          'status_code',
-          'created_at',
-          'updated_at',
-        ],
-      });
-      
-      if (user) {
-        this.logger.log(`✅ Fetched user with ID ${id}`);
-      } else {
-        this.logger.warn(`⚠️ User with ID ${id} not found`);
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
       }
-      
+      const user = await this.usersRepository.findOne({ 
+        where: { user_id: id }, 
+        relations: ['role'] 
+      });
+      if (!user) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
       return user;
     } catch (error) {
-      this.logger.error(`❌ Error fetching user with ID ${id}:`, error.message);
-      throw new Error(`Failed to fetch user: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error(`Failed to fetch user with ID ${id}:`, error.message);
+      throw new InternalServerErrorException(`Failed to retrieve user: ${error.message}`);
     }
   }
 
   /**
-   * Fetch all drivers
+   * Get all drivers with their assigned orders
    */
   async getAllDrivers(): Promise<Driver[]> {
     try {
-      await this.checkConnection();
-      const drivers = await this.driverRepository.find({
-        relations: ['orders'],
-        order: { id: 'ASC' },
-      });
-      this.logger.log(`✅ Fetched ${drivers.length} drivers from database`);
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
+      }
+      const drivers = await this.driversRepository.find({ relations: ['orders'] });
+      console.log(`✅ Fetched ${drivers.length} drivers from database`);
       return drivers;
     } catch (error) {
-      this.logger.error('❌ Error fetching drivers:', error.message);
-      throw new Error(`Failed to fetch drivers: ${error.message}`);
+      console.error('Failed to fetch drivers:', error.message);
+      throw new InternalServerErrorException(`Failed to retrieve drivers: ${error.message}`);
     }
   }
 
   /**
-   * Fetch driver by ID
+   * Get driver by ID with their assigned orders
    */
-  async getDriverById(id: number): Promise<Driver | null> {
+  async getDriverById(id: number): Promise<Driver> {
     try {
-      await this.checkConnection();
-      const driver = await this.driverRepository.findOne({
-        where: { id },
-        relations: ['orders'],
-      });
-      
-      if (driver) {
-        this.logger.log(`✅ Fetched driver with ID ${id}`);
-      } else {
-        this.logger.warn(`⚠️ Driver with ID ${id} not found`);
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
       }
-      
+      const driver = await this.driversRepository.findOne({ 
+        where: { id }, 
+        relations: ['orders'] 
+      });
+      if (!driver) {
+        throw new NotFoundException(`Driver with ID ${id} not found`);
+      }
       return driver;
     } catch (error) {
-      this.logger.error(`❌ Error fetching driver with ID ${id}:`, error.message);
-      throw new Error(`Failed to fetch driver: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error(`Failed to fetch driver with ID ${id}:`, error.message);
+      throw new InternalServerErrorException(`Failed to retrieve driver: ${error.message}`);
     }
   }
 
   /**
-   * Fetch all orders with driver information
+   * Get all orders with their assigned drivers
    */
   async getAllOrders(): Promise<Order[]> {
     try {
-      await this.checkConnection();
-      const orders = await this.orderRepository.find({
-        relations: ['driver'],
-        order: { id: 'ASC' },
-      });
-      this.logger.log(`✅ Fetched ${orders.length} orders from database`);
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
+      }
+      const orders = await this.ordersRepository.find({ relations: ['driver'] });
+      console.log(`✅ Fetched ${orders.length} orders from database`);
       return orders;
     } catch (error) {
-      this.logger.error('❌ Error fetching orders:', error.message);
-      throw new Error(`Failed to fetch orders: ${error.message}`);
+      console.error('Failed to fetch orders:', error.message);
+      throw new InternalServerErrorException(`Failed to retrieve orders: ${error.message}`);
     }
   }
 
   /**
-   * Fetch order by ID
+   * Get order by ID with its assigned driver
    */
-  async getOrderById(id: number): Promise<Order | null> {
+  async getOrderById(id: number): Promise<Order> {
     try {
-      await this.checkConnection();
-      const order = await this.orderRepository.findOne({
-        where: { id },
-        relations: ['driver'],
-      });
-      
-      if (order) {
-        this.logger.log(`✅ Fetched order with ID ${id}`);
-      } else {
-        this.logger.warn(`⚠️ Order with ID ${id} not found`);
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
       }
-      
+      const order = await this.ordersRepository.findOne({ 
+        where: { id }, 
+        relations: ['driver'] 
+      });
+      if (!order) {
+        throw new NotFoundException(`Order with ID ${id} not found`);
+      }
       return order;
     } catch (error) {
-      this.logger.error(`❌ Error fetching order with ID ${id}:`, error.message);
-      throw new Error(`Failed to fetch order: ${error.message}`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error(`Failed to fetch order with ID ${id}:`, error.message);
+      throw new InternalServerErrorException(`Failed to retrieve order: ${error.message}`);
     }
   }
 
   /**
-   * Fetch orders by status
+   * Get orders by status
    */
   async getOrdersByStatus(status: string): Promise<Order[]> {
     try {
-      await this.checkConnection();
-      const orders = await this.orderRepository.find({
-        where: { status },
-        relations: ['driver'],
-        order: { id: 'ASC' },
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
+      }
+      return this.ordersRepository.find({ 
+        where: { status }, 
+        relations: ['driver'] 
       });
-      this.logger.log(`✅ Fetched ${orders.length} orders with status '${status}'`);
-      return orders;
     } catch (error) {
-      this.logger.error(`❌ Error fetching orders by status '${status}':`, error.message);
-      throw new Error(`Failed to fetch orders by status: ${error.message}`);
+      console.error(`Failed to fetch orders with status ${status}:`, error.message);
+      throw new InternalServerErrorException(`Failed to retrieve orders by status: ${error.message}`);
     }
   }
 
   /**
-   * Fetch orders by driver ID
+   * Get orders by driver ID
    */
   async getOrdersByDriverId(driverId: number): Promise<Order[]> {
     try {
-      await this.checkConnection();
-      const orders = await this.orderRepository.find({
-        where: { driverId },
-        relations: ['driver'],
-        order: { id: 'ASC' },
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
+      }
+      return this.ordersRepository.find({ 
+        where: { driverId }, 
+        relations: ['driver'] 
       });
-      this.logger.log(`✅ Fetched ${orders.length} orders for driver ID ${driverId}`);
-      return orders;
     } catch (error) {
-      this.logger.error(`❌ Error fetching orders for driver ID ${driverId}:`, error.message);
-      throw new Error(`Failed to fetch orders for driver: ${error.message}`);
+      console.error(`Failed to fetch orders for driver ID ${driverId}:`, error.message);
+      throw new InternalServerErrorException(`Failed to retrieve orders by driver ID: ${error.message}`);
     }
   }
 
   /**
    * Get database statistics
    */
-  async getDatabaseStats(): Promise<{
-    users: number;
-    drivers: number;
-    orders: number;
-    roles: number;
-    connectionStatus: { connected: boolean; initialized: boolean };
-  }> {
+  async getDatabaseStats() {
     try {
-      await this.checkConnection();
-      
-      const [userCount, driverCount, orderCount, roleCount] = await Promise.all([
-        this.userRepository.count(),
-        this.driverRepository.count(),
-        this.orderRepository.count(),
-        this.roleRepository.count(),
-      ]);
+      if (!(await this.checkConnectionStatus()).connected) {
+        throw new InternalServerErrorException('Database not connected.');
+      }
+      const usersCount = await this.usersRepository.count();
+      const driversCount = await this.driversRepository.count();
+      const ordersCount = await this.ordersRepository.count();
+      const rolesCount = await this.rolesRepository.count();
 
-      const stats = {
-        users: userCount,
-        drivers: driverCount,
-        orders: orderCount,
-        roles: roleCount,
-        connectionStatus: this.getConnectionStatus(),
+      return {
+        users: usersCount,
+        drivers: driversCount,
+        orders: ordersCount,
+        roles: rolesCount,
+        connectionStatus: await this.checkConnectionStatus(),
       };
-
-      this.logger.log('✅ Database statistics retrieved successfully');
-      return stats;
     } catch (error) {
-      this.logger.error('❌ Error fetching database statistics:', error.message);
-      throw new Error(`Failed to fetch database statistics: ${error.message}`);
+      console.error('Failed to fetch database statistics:', error.message);
+      throw new InternalServerErrorException(`Failed to retrieve database statistics: ${error.message}`);
     }
   }
 }

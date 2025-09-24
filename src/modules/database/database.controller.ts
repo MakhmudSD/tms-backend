@@ -1,387 +1,140 @@
-import { Controller, Get, Param, ParseIntPipe, HttpException, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Param, ParseIntPipe, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { DatabaseService } from './database.service';
+import { User } from '../users/user.entity';
+import { Driver } from '../drivers/driver.entity';
+import { Order } from '../orders/order.entity';
 
 @ApiTags('Database')
 @Controller('database')
 export class DatabaseController {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @ApiOperation({ summary: 'Get database connection status' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Database connection status retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        connected: { type: 'boolean' },
-        initialized: { type: 'boolean' },
-      },
-    },
-  })
   @Get('status')
-  async getConnectionStatus() {
-    try {
-      const status = this.databaseService.getConnectionStatus();
-      return {
-        success: true,
-        message: 'Database connection status retrieved successfully',
-        data: status,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to get database connection status',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  @ApiOperation({ summary: 'Get database connection status' })
+  @ApiResponse({ status: 200, description: 'Database connection status retrieved successfully' })
+  async getStatus() {
+    const status = await this.databaseService.checkConnectionStatus();
+    return { success: true, message: 'Database connection status retrieved successfully', data: status };
   }
 
-  @ApiOperation({ summary: 'Get all users' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Users retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-        data: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              user_id: { type: 'number' },
-              login_id: { type: 'string' },
-              user_name: { type: 'string' },
-              email: { type: 'string' },
-              phone_number: { type: 'string' },
-              status_code: { type: 'string' },
-              created_at: { type: 'string' },
-              updated_at: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
-  })
   @Get('users')
+  @ApiOperation({ summary: 'Get all users with their roles' })
+  @ApiResponse({ status: 200, description: 'Retrieved all users successfully', type: [User] })
   async getAllUsers() {
     try {
       const users = await this.databaseService.getAllUsers();
-      return {
-        success: true,
-        message: `Retrieved ${users.length} users successfully`,
-        data: users,
-      };
+      return { success: true, message: `Retrieved ${users.length} users successfully`, data: users };
     } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve users',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get user by ID' })
-  @ApiParam({ name: 'id', description: 'User ID', type: 'number' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'User retrieved successfully',
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'User not found',
-  })
   @Get('users/:id')
+  @ApiOperation({ summary: 'Get user by ID with their role' })
+  @ApiResponse({ status: 200, description: 'User retrieved successfully', type: User })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async getUserById(@Param('id', ParseIntPipe) id: number) {
     try {
       const user = await this.databaseService.getUserById(id);
-      
-      if (!user) {
-        throw new HttpException(
-          {
-            success: false,
-            message: `User with ID ${id} not found`,
-            data: null,
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      return {
-        success: true,
-        message: 'User retrieved successfully',
-        data: user,
-      };
+      return { success: true, message: 'User retrieved successfully', data: user };
     } catch (error) {
-      if (error instanceof HttpException) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
-      
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve user',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get all drivers' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Drivers retrieved successfully',
-  })
   @Get('drivers')
+  @ApiOperation({ summary: 'Get all drivers with their assigned orders' })
+  @ApiResponse({ status: 200, description: 'Retrieved all drivers successfully', type: [Driver] })
   async getAllDrivers() {
     try {
       const drivers = await this.databaseService.getAllDrivers();
-      return {
-        success: true,
-        message: `Retrieved ${drivers.length} drivers successfully`,
-        data: drivers,
-      };
+      return { success: true, message: `Retrieved ${drivers.length} drivers successfully`, data: drivers };
     } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve drivers',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get driver by ID' })
-  @ApiParam({ name: 'id', description: 'Driver ID', type: 'number' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Driver retrieved successfully',
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Driver not found',
-  })
   @Get('drivers/:id')
+  @ApiOperation({ summary: 'Get driver by ID with their assigned orders' })
+  @ApiResponse({ status: 200, description: 'Driver retrieved successfully', type: Driver })
+  @ApiResponse({ status: 404, description: 'Driver not found' })
   async getDriverById(@Param('id', ParseIntPipe) id: number) {
     try {
       const driver = await this.databaseService.getDriverById(id);
-      
-      if (!driver) {
-        throw new HttpException(
-          {
-            success: false,
-            message: `Driver with ID ${id} not found`,
-            data: null,
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      return {
-        success: true,
-        message: 'Driver retrieved successfully',
-        data: driver,
-      };
+      return { success: true, message: 'Driver retrieved successfully', data: driver };
     } catch (error) {
-      if (error instanceof HttpException) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
-      
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve driver',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get all orders' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Orders retrieved successfully',
-  })
   @Get('orders')
+  @ApiOperation({ summary: 'Get all orders with their assigned drivers' })
+  @ApiResponse({ status: 200, description: 'Retrieved all orders successfully', type: [Order] })
   async getAllOrders() {
     try {
       const orders = await this.databaseService.getAllOrders();
-      return {
-        success: true,
-        message: `Retrieved ${orders.length} orders successfully`,
-        data: orders,
-      };
+      return { success: true, message: `Retrieved ${orders.length} orders successfully`, data: orders };
     } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve orders',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get order by ID' })
-  @ApiParam({ name: 'id', description: 'Order ID', type: 'number' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Order retrieved successfully',
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Order not found',
-  })
   @Get('orders/:id')
+  @ApiOperation({ summary: 'Get order by ID with its assigned driver' })
+  @ApiResponse({ status: 200, description: 'Order retrieved successfully', type: Order })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   async getOrderById(@Param('id', ParseIntPipe) id: number) {
     try {
       const order = await this.databaseService.getOrderById(id);
-      
-      if (!order) {
-        throw new HttpException(
-          {
-            success: false,
-            message: `Order with ID ${id} not found`,
-            data: null,
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      return {
-        success: true,
-        message: 'Order retrieved successfully',
-        data: order,
-      };
+      return { success: true, message: 'Order retrieved successfully', data: order };
     } catch (error) {
-      if (error instanceof HttpException) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
-      
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve order',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get orders by status' })
-  @ApiParam({ name: 'status', description: 'Order status', type: 'string' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Orders retrieved successfully',
-  })
   @Get('orders/status/:status')
+  @ApiOperation({ summary: 'Get orders by status' })
+  @ApiResponse({ status: 200, description: 'Retrieved orders by status successfully', type: [Order] })
   async getOrdersByStatus(@Param('status') status: string) {
     try {
       const orders = await this.databaseService.getOrdersByStatus(status);
-      return {
-        success: true,
-        message: `Retrieved ${orders.length} orders with status '${status}'`,
-        data: orders,
-      };
+      return { success: true, message: `Retrieved ${orders.length} orders with status '${status}'`, data: orders };
     } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve orders by status',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get orders by driver ID' })
-  @ApiParam({ name: 'driverId', description: 'Driver ID', type: 'number' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Orders retrieved successfully',
-  })
   @Get('orders/driver/:driverId')
+  @ApiOperation({ summary: 'Get orders by driver ID' })
+  @ApiResponse({ status: 200, description: 'Retrieved orders by driver ID successfully', type: [Order] })
   async getOrdersByDriverId(@Param('driverId', ParseIntPipe) driverId: number) {
     try {
       const orders = await this.databaseService.getOrdersByDriverId(driverId);
-      return {
-        success: true,
-        message: `Retrieved ${orders.length} orders for driver ID ${driverId}`,
-        data: orders,
-      };
+      return { success: true, message: `Retrieved ${orders.length} orders for driver ID ${driverId}`, data: orders };
     } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve orders for driver',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  @ApiOperation({ summary: 'Get database statistics' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Database statistics retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-        data: {
-          type: 'object',
-          properties: {
-            users: { type: 'number' },
-            drivers: { type: 'number' },
-            orders: { type: 'number' },
-            roles: { type: 'number' },
-            connectionStatus: {
-              type: 'object',
-              properties: {
-                connected: { type: 'boolean' },
-                initialized: { type: 'boolean' },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
   @Get('stats')
+  @ApiOperation({ summary: 'Get database statistics' })
+  @ApiResponse({ status: 200, description: 'Database statistics retrieved successfully' })
   async getDatabaseStats() {
     try {
       const stats = await this.databaseService.getDatabaseStats();
-      return {
-        success: true,
-        message: 'Database statistics retrieved successfully',
-        data: stats,
-      };
+      return { success: true, message: 'Database statistics retrieved successfully', data: stats };
     } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve database statistics',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 }

@@ -9,6 +9,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
 import { DriversModule } from "./modules/drivers/drivers.module";
 import { OrdersModule } from "./modules/orders/orders.module";
+import { KoreanTmsModule } from "./modules/korean-tms/korean-tms.module";
 
 // Entities
 import { User } from "./modules/users/user.entity";
@@ -34,6 +35,7 @@ import { Order } from "./modules/orders/order.entity";
     UsersModule,
     DriversModule,
     OrdersModule,
+    KoreanTmsModule,
   ],
 })
 export class AppModule {}
