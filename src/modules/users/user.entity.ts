@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import { Role } from './role.entity';
 
 /**
  * User Entity
@@ -50,4 +51,9 @@ export class User {
   @ApiProperty({ description: 'Last update timestamp' })
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
+
+  // Relations
+  @ManyToOne(() => Role, role => role.users, { nullable: true })
+  @JoinColumn({ name: 'role_id' })
+  role: Role;
 }

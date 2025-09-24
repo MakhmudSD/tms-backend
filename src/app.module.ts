@@ -4,6 +4,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtModule } from "@nestjs/jwt";
 
 // Feature modules
+import { DatabaseModule } from "./modules/database/database.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
 import { DriversModule } from "./modules/drivers/drivers.module";
@@ -23,26 +24,12 @@ import { Order } from "./modules/orders/order.entity";
       envFilePath: ".env",
     }),
 
-    // PostgreSQL Database
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: "postgres",
-        host: configService.get<string>("DB_HOST"),
-        port: Number(configService.get("DB_PORT")),
-        username: configService.get<string>("DB_USERNAME"),
-        password: configService.get<string>("DB_PASSWORD"),
-        database: "postgres",
-        entities: [User, Role, Driver, Order],
-        synchronize: false, // Disable sync to prevent conflicts with existing data
-        logging: false, // Reduce log noise
-      }),
-    }),
+    // Database connection is handled by DatabaseModule
 
     // JWT module is configured in AuthModule
 
     // Feature modules
+    DatabaseModule,
     AuthModule,
     UsersModule,
     DriversModule,

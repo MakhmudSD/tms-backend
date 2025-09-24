@@ -10,19 +10,13 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
     
-    console.log('🔧 JwtAuthGuard: Extracted token:', token ? 'Token found' : 'No token');
-    console.log('🔧 JwtAuthGuard: Authorization header:', request.headers.authorization);
-    
     if (!token) {
       console.log('❌ JwtAuthGuard: No token found in Authorization header');
       throw new UnauthorizedException('Access token is required');
     }
     
     try {
-      console.log('🔧 JwtAuthGuard: Verifying token...');
       const payload = await this.jwtService.verifyAsync(token);
-      console.log('✅ JwtAuthGuard: Token verified successfully');
-      console.log('🔧 JwtAuthGuard: Token payload:', payload);
       
       request['user'] = payload;
       return true;
@@ -34,14 +28,12 @@ export class JwtAuthGuard implements CanActivate {
 
   private extractTokenFromHeader(request: Request): string | undefined {
     const authHeader = request.headers.authorization;
-    console.log('🔧 JwtAuthGuard: Raw authorization header:', authHeader);
     
     if (!authHeader) {
       return undefined;
     }
     
     const [type, token] = authHeader.split(' ');
-    console.log('🔧 JwtAuthGuard: Token type:', type, 'Token:', token ? 'Present' : 'Missing');
     
     return type === 'Bearer' ? token : undefined;
   }
