@@ -4,7 +4,8 @@ Transport Management System Backend built with NestJS, TypeORM, and PostgreSQL.
 
 ## Features
 
-- **Authentication**: JWT-based authentication with role-based access control
+- **User Registration**: Signup system with automatic admin creation for first user
+- **JWT Authentication**: Secure JWT-based authentication with role-based access control
 - **Users Management**: CRUD operations for system users (admin, manager, dispatcher)
 - **Drivers Management**: CRUD operations for drivers with status tracking
 - **Orders Management**: CRUD operations for orders with driver assignment
@@ -15,51 +16,62 @@ Transport Management System Backend built with NestJS, TypeORM, and PostgreSQL.
 ## Prerequisites
 
 - Node.js (v18 or higher)
-- PostgreSQL database
 - npm or yarn
+- PostgreSQL database
 
 ## Setup
 
-### 1. Install dependencies
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-### 2. Configure Database
-- Copy `.env.example` → `.env` and configure your database credentials:
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-DB_DATABASE=your_database
+# 2. Configure Database
+# Copy .env.example → .env and configure your database credentials:
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_USERNAME=postgres
+# DB_PASSWORD=your_password
+# DB_DATABASE=your_database
 
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRES_IN=24h
-
-PORT=3000
-NODE_ENV=development
-```
-
-### 3. Run Migrations
-```bash
+# 3. Run Migrations
 npm run migration:run
-```
 
-### 4. Run Seed
-```bash
-npm run seed
-```
-
-### 5. Start the Project
-```bash
+# 4. Start the Project
 npm run start:dev
+
+# 5. Create your first account (becomes admin automatically)
+# Use the frontend signup form or API endpoint
 ```
 
-## Default Credentials
+## User Registration & Authentication
 
-- **Email**: admin@example.com
-- **Password**: password123
+### First User (Admin Creation)
+**Only the first user** to sign up automatically becomes an **admin** with full system access. **All subsequent signup attempts are blocked** with an error message.
+
+### Signup Process
+1. Use the frontend signup form or API endpoint
+2. Provide username, password, name, and email
+3. **Only the first user** automatically gets admin role
+4. **All subsequent signup attempts are blocked** with error: "Admin already exists! Only one admin is allowed. Please contact the existing admin to create your account."
+
+### Example Signup Request:
+```bash
+curl -X POST http://localhost:3000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "yourpassword",
+    "name": "System Administrator",
+    "email": "admin@example.com"
+  }'
+```
+
+### Example Login Request:
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "yourpassword"}'
+```
 
 ## Database Setup
 
@@ -115,6 +127,7 @@ The application will be available at:
 ## API Endpoints
 
 ### Authentication
+- `POST /auth/signup` - User registration (first user becomes admin)
 - `POST /auth/login` - User login
 - `GET /auth/profile` - Get user profile (protected)
 

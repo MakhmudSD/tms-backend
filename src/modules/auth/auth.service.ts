@@ -14,6 +14,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+
   /**
    * Validate user credentials and return user data
    */
@@ -58,9 +59,7 @@ export class AuthService {
       role_id: user.role_id 
     };
 
-    console.log('🔧 Creating JWT token for user:', user.login_id);
     const access_token = this.jwtService.sign(payload);
-    console.log('✅ JWT token created successfully');
 
     return {
       access_token,
@@ -73,6 +72,67 @@ export class AuthService {
         phone_number: user.phone_number,
         status_code: user.status_code,
       },
+    };
+  }
+
+  /**
+   * Register a new user
+   * Only the first user becomes admin, all others are blocked if admin exists
+   */
+  async signup(signupDto: any): Promise<any> {
+    // Check if user already exists
+    const existingUser = await this.usersRepository.findOne({
+      where: { login_id: signupDto.username }
+    });
+
+    if (existingUser) {
+      throw new UnauthorizedException('Username already exists');
+    }
+
+    // Get or create admin role
+    const roleRepository = this.usersRepository.manager.getRepository('Role');
+    let adminRole = await roleRepository.findOne({ where: { role_name: 'admin' } });
+    
+    if (!adminRole) {
+      adminRole = roleRepository.create({
+        role_name: 'admin',
+        description: 'System Administrator',
+      });
+      await roleRepository.save(adminRole);
+    }
+
+    // Check if any admin user already exists
+    const existingAdmin = await this.usersRepository.findOne({
+      where: { role_id: adminRole.role_id }
+    });
+
+    // If admin already exists, block the signup completely
+    if (existingAdmin) {
+      throw new UnauthorizedException('Admin already exists! Only one admin is allowed. Please contact the existing admin to create your account.');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(signupDto.password, 10);
+
+    // Create admin user (only the first user)
+    const newUser = this.usersRepository.create({
+      login_id: signupDto.username,
+      password_hash: hashedPassword,
+      user_name: signupDto.name || signupDto.username,
+      email: signupDto.email || `${signupDto.username}@example.com`,
+      phone_number: signupDto.phone || '010-0000-0000',
+      role_id: adminRole.role_id, // First user = admin
+      status_code: 'ACTIVE',
+    });
+
+    const savedUser = await this.usersRepository.save(newUser);
+
+    // Return user data without password
+    const { password_hash: _, ...result } = savedUser;
+    return {
+      message: 'Admin account created successfully! You are now the system administrator.',
+      user: result,
+      isAdmin: true
     };
   }
 

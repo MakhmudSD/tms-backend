@@ -9,6 +9,40 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiOperation({ summary: 'User signup' })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Account created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        user: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'number' },
+            login_id: { type: 'string' },
+            user_name: { type: 'string' },
+            email: { type: 'string' },
+            role_id: { type: 'number' },
+          },
+        },
+        isAdmin: { type: 'boolean' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Username already exists' })
+  @Post('signup')
+  async signup(@Body() signupDto: any) {
+    try {
+      const result = await this.authService.signup(signupDto);
+      return result;
+    } catch (error) {
+      console.error('❌ Signup error:', error);
+      throw error;
+    }
+  }
+
   @ApiOperation({ summary: 'User login' })
   @ApiResponse({ 
     status: 200, 
@@ -34,9 +68,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     try {
-      console.log('🔧 Login attempt for:', loginDto.username);
       const result = await this.authService.login(loginDto);
-      console.log('✅ Login successful for:', loginDto.username);
       return result;
     } catch (error) {
       console.error('❌ Login error:', error);
