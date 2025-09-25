@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DatabaseService } from './database.service';
 import { DatabaseController } from './database.controller';
+import { SeedService } from '../../database/seeds/seed.service';
 
 // Import entities
 import { User } from '../users/user.entity';
@@ -40,8 +41,8 @@ import { Settlement } from '../korean-tms/settlement.entity';
     // Register entities for repository injection
     TypeOrmModule.forFeature([User, Role, Driver, Order, Branch, Client, Asset, Waypoint, Settlement]),
   ],
-  providers: [DatabaseService],
+  providers: [DatabaseService, SeedService],
   controllers: [DatabaseController],
-  exports: [DatabaseService, TypeOrmModule],
+  exports: [DatabaseService, SeedService, TypeOrmModule],
 })
 export class DatabaseModule {}

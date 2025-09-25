@@ -9,7 +9,8 @@ Transport Management System Backend built with NestJS, TypeORM, and PostgreSQL.
 - **Drivers Management**: CRUD operations for drivers with status tracking
 - **Orders Management**: CRUD operations for orders with driver assignment
 - **API Documentation**: Swagger/OpenAPI documentation
-- **Database**: PostgreSQL with TypeORM (connects to existing schema)
+- **Database**: PostgreSQL with TypeORM migrations and seeding
+- **Auto-setup**: Automatic database schema creation and admin user seeding
 
 ## Prerequisites
 
@@ -17,19 +18,16 @@ Transport Management System Backend built with NestJS, TypeORM, and PostgreSQL.
 - PostgreSQL database
 - npm or yarn
 
-## Installation
+## Project Setup
 
-1. Install dependencies:
+### 1. Install dependencies
 ```bash
 npm install
 ```
 
-2. Create a `.env` file based on `env.example`:
-```bash
-cp env.example .env
-```
-
-3. Update the `.env` file with your database credentials:
+### 2. Configure Database
+- Make sure PostgreSQL is running
+- Update `.env` with your DB credentials:
 ```env
 DB_HOST=localhost
 DB_PORT=5432
@@ -44,27 +42,53 @@ PORT=3000
 NODE_ENV=development
 ```
 
-## Database Setup
-
-This application connects to an existing PostgreSQL database. Make sure your database is running and accessible with the credentials in your `.env` file.
-
-### Seed Data
-
-To populate the database with sample data:
-
+### 3. Run Migrations
 ```bash
-npm run seed
+npm run typeorm migration:run
 ```
 
-This will create:
-- 3 sample users (admin, manager, dispatcher)
-- 4 sample drivers
-- 4 sample orders
+### 4. Run Project
+```bash
+npm run start:dev
+```
 
-**Default Login Credentials:**
-- Username: `admin`, Password: `password123` (Admin)
-- Username: `manager`, Password: `password123` (Manager)  
-- Username: `dispatcher`, Password: `password123` (Dispatcher)
+### 5. Default Login
+- **Email**: admin@example.com
+- **Password**: admin123
+
+## Database Setup
+
+The application automatically:
+- Creates the database schema using TypeORM migrations
+- Seeds the database with an admin user
+- Ensures tables and admin user always exist
+
+### Manual Database Operations
+
+**Run Migrations:**
+```bash
+npm run typeorm migration:run
+```
+
+**Revert Last Migration:**
+```bash
+npm run typeorm migration:revert
+```
+
+**Generate New Migration:**
+```bash
+npm run typeorm migration:generate -- src/migrations/MigrationName
+```
+
+**Run Seeds Manually:**
+```bash
+npm run seed:run
+```
+
+**Check Migration Status:**
+```bash
+npm run typeorm migration:show
+```
 
 ## Running the Application
 
@@ -145,8 +169,10 @@ src/
 
 ## Notes
 
-- The application connects to existing database tables (no migrations)
-- Password hashing is handled automatically
+- The application automatically creates database tables using TypeORM migrations
+- Admin user is automatically seeded on first run
+- Password hashing is handled automatically with bcrypt
 - JWT tokens expire after 24 hours by default
 - All protected routes require Bearer token authentication
 - CORS is enabled for frontend communication
+- Migrations ensure database schema consistency across environments

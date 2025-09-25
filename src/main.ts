@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { SeedService } from './database/seeds/seed.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -33,6 +34,14 @@ async function bootstrap() {
   
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
+
+  // Run database seeds after app bootstrap
+  try {
+    const seedService = app.get(SeedService);
+    await seedService.runSeeds();
+  } catch (error) {
+    console.error('❌ Error running seeds:', error);
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
