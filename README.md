@@ -18,7 +18,7 @@ Transport Management System Backend built with NestJS, TypeORM, and PostgreSQL.
 - PostgreSQL database
 - npm or yarn
 
-## Project Setup
+## Setup
 
 ### 1. Install dependencies
 ```bash
@@ -26,8 +26,7 @@ npm install
 ```
 
 ### 2. Configure Database
-- Make sure PostgreSQL is running
-- Update `.env` with your DB credentials:
+- Copy `.env.example` → `.env` and configure your database credentials:
 ```env
 DB_HOST=localhost
 DB_PORT=5432
@@ -44,17 +43,23 @@ NODE_ENV=development
 
 ### 3. Run Migrations
 ```bash
-npm run typeorm migration:run
+npm run migration:run
 ```
 
-### 4. Run Project
+### 4. Run Seed
+```bash
+npm run seed
+```
+
+### 5. Start the Project
 ```bash
 npm run start:dev
 ```
 
-### 5. Default Login
+## Default Credentials
+
 - **Email**: admin@example.com
-- **Password**: admin123
+- **Password**: password123
 
 ## Database Setup
 
