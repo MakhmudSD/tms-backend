@@ -1,22 +1,27 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
+import { Role } from './role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RoleService } from './role.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Role)
+    private rolesRepository: Repository<Role>,
+    private roleService: RoleService,
   ) {}
 
   /**
    * Create a new user
    */
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto, currentUserRole?: string): Promise<User> {
     try {
       // Check if login_id already exists
       const existingUser = await this.usersRepository.findOne({
@@ -27,6 +32,14 @@ export class UsersService {
         throw new ConflictException('Login ID already exists');
       }
 
+      // Check permissions for admin role assignment
+      if (createUserDto.role === 'admin' && currentUserRole !== 'admin') {
+        throw new ForbiddenException('Only admins can create other admin users');
+      }
+
+      // Get the role
+      const role = await this.roleService.findByName(createUserDto.role);
+
       // Hash password
       const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
@@ -35,6 +48,7 @@ export class UsersService {
         password_hash: hashedPassword,
         user_name: createUserDto.fullName || createUserDto.username,
         email: createUserDto.email,
+        role_id: role.role_id,
         status_code: 'ACTIVE',
       });
 
@@ -42,9 +56,13 @@ export class UsersService {
 
       // Return user without password
       const { password_hash, ...result } = savedUser;
-      return result as User;
+      return {
+        ...result,
+        role_name: role.role_name,
+        password_hash: '', // Add empty password_hash to satisfy type
+      } as User;
     } catch (error) {
-      if (error instanceof ConflictException) {
+      if (error instanceof ConflictException || error instanceof ForbiddenException) {
         throw error;
       }
       console.error('Error creating user:', error);
@@ -58,8 +76,14 @@ export class UsersService {
   async findAll(): Promise<User[]> {
     const users = await this.usersRepository.find({
       select: ['user_id', 'login_id', 'user_name', 'role_id', 'email', 'phone_number', 'status_code', 'created_at', 'updated_at'],
+      relations: ['role'],
     });
-    return users;
+    
+    return users.map(user => ({
+      ...user,
+      role_name: user.role?.role_name,
+      password_hash: '', // Add empty password_hash to satisfy type
+    })) as User[];
   }
 
   /**

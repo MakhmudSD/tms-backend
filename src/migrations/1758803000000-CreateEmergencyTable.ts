@@ -4,125 +4,29 @@ export class CreateEmergencyTable1758803000000 implements MigrationInterface {
   name = 'CreateEmergencyTable1758803000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.createTable(
-      new Table({
-        name: 'emergencies',
-        schema: 'tms',
-        columns: [
-          {
-            name: 'emergency_id',
-            type: 'int',
-            isPrimary: true,
-            isGenerated: true,
-            generationStrategy: 'increment',
-          },
-          {
-            name: 'emergency_type',
-            type: 'varchar',
-            length: '50',
-            isNullable: false,
-          },
-          {
-            name: 'priority',
-            type: 'varchar',
-            length: '20',
-            default: "'medium'",
-          },
-          {
-            name: 'status',
-            type: 'varchar',
-            length: '20',
-            default: "'reported'",
-          },
-          {
-            name: 'description',
-            type: 'text',
-            isNullable: false,
-          },
-          {
-            name: 'current_location',
-            type: 'varchar',
-            length: '255',
-            isNullable: true,
-          },
-          {
-            name: 'vehicle_plate',
-            type: 'varchar',
-            length: '50',
-            isNullable: true,
-          },
-          {
-            name: 'driver_name',
-            type: 'varchar',
-            length: '100',
-            isNullable: true,
-          },
-          {
-            name: 'contact_phone',
-            type: 'varchar',
-            length: '50',
-            isNullable: true,
-          },
-          {
-            name: 'reported_at',
-            type: 'timestamp',
-            default: 'now()',
-          },
-          {
-            name: 'response_started_at',
-            type: 'timestamp',
-            isNullable: true,
-          },
-          {
-            name: 'resolved_at',
-            type: 'timestamp',
-            isNullable: true,
-          },
-          {
-            name: 'response_time_minutes',
-            type: 'int',
-            isNullable: true,
-          },
-          {
-            name: 'response_logs',
-            type: 'jsonb',
-            isNullable: false,
-            default: "'[]'",
-          },
-          {
-            name: 'asset_id',
-            type: 'int',
-            isNullable: true,
-          },
-          {
-            name: 'driver_id',
-            type: 'int',
-            isNullable: true,
-          },
-          {
-            name: 'updated_at',
-            type: 'timestamp',
-            default: 'now()',
-          },
-        ],
-        foreignKeys: [
-          {
-            columnNames: ['asset_id'],
-            referencedColumnNames: ['asset_id'],
-            referencedTableName: 'assets',
-            referencedSchema: 'tms',
-            onDelete: 'SET NULL',
-          },
-          {
-            columnNames: ['driver_id'],
-            referencedColumnNames: ['id'],
-            referencedTableName: 'drivers',
-            onDelete: 'SET NULL',
-          },
-        ],
-      }),
-      true,
-    );
+    // Create emergencies table using raw SQL to avoid foreign key issues
+    await queryRunner.query(`
+      CREATE TABLE "tms"."emergencies" (
+        "emergency_id" SERIAL NOT NULL,
+        "emergency_type" character varying(50) NOT NULL,
+        "priority" character varying(20) NOT NULL DEFAULT 'medium',
+        "status" character varying(20) NOT NULL DEFAULT 'reported',
+        "description" text NOT NULL,
+        "current_location" character varying(255),
+        "vehicle_plate" character varying(50),
+        "driver_name" character varying(100),
+        "contact_phone" character varying(50),
+        "reported_at" TIMESTAMP NOT NULL DEFAULT now(),
+        "response_started_at" TIMESTAMP,
+        "resolved_at" TIMESTAMP,
+        "response_time_minutes" integer,
+        "response_logs" jsonb NOT NULL DEFAULT '[]',
+        "asset_id" integer,
+        "driver_id" integer,
+        "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+        CONSTRAINT "PK_emergencies_emergency_id" PRIMARY KEY ("emergency_id")
+      )
+    `);
 
     // Create indexes for better performance using raw SQL
     await queryRunner.query(`CREATE INDEX "IDX_emergencies_status" ON "tms"."emergencies" ("status")`);

@@ -46,13 +46,35 @@ npm run start:dev
 ## User Registration & Authentication
 
 ### First User (Admin Creation)
-**Only the first user** to sign up automatically becomes an **admin** with full system access. **All subsequent signup attempts are blocked** with an error message.
+**The first user** to sign up automatically becomes an **admin** with full system access. **Subsequent users** can be created by existing admins with proper role assignment.
 
 ### Signup Process
 1. Use the frontend signup form or API endpoint
 2. Provide username, password, name, and email
-3. **Only the first user** automatically gets admin role
-4. **All subsequent signup attempts are blocked** with error: "Admin already exists! Only one admin is allowed. Please contact the existing admin to create your account."
+3. **First user** automatically gets admin role
+4. **Subsequent users** become dispatchers by default
+
+### Admin User Creation
+**Existing admins** can create new admin users through the user management API:
+
+```bash
+curl -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "username": "newadmin",
+    "password": "password123",
+    "role": "admin",
+    "email": "newadmin@tms.com",
+    "fullName": "New Administrator"
+  }'
+```
+
+### Role-Based Access Control
+- **admin**: Full system access, can create other admins
+- **manager**: Management privileges, can create users (non-admin)
+- **dispatcher**: Order management access
+- **driver**: Limited access
 
 ### Example Signup Request:
 ```bash
@@ -60,9 +82,9 @@ curl -X POST http://localhost:3000/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
-    "password": "yourpassword",
+    "password": "admin123",
     "name": "System Administrator",
-    "email": "admin@example.com"
+    "email": "admin@tms.com"
   }'
 ```
 
@@ -70,7 +92,7 @@ curl -X POST http://localhost:3000/auth/signup \
 ```bash
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "yourpassword"}'
+  -d '{"username": "admin", "password": "admin123"}'
 ```
 
 ## Database Setup
@@ -132,11 +154,11 @@ The application will be available at:
 - `GET /auth/profile` - Get user profile (protected)
 
 ### Users
-- `GET /users` - Get all users (protected)
-- `POST /users` - Create user (protected)
-- `GET /users/:id` - Get user by ID (protected)
-- `PATCH /users/:id` - Update user (protected)
-- `DELETE /users/:id` - Delete user (protected)
+- `GET /users` - Get all users (admin/manager only)
+- `POST /users` - Create user (admin/manager only)
+- `GET /users/:id` - Get user by ID (admin/manager only)
+- `PATCH /users/:id` - Update user (admin/manager only)
+- `DELETE /users/:id` - Delete user (admin only)
 
 ### Drivers
 - `GET /drivers` - Get all drivers (protected)

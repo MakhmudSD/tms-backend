@@ -1,10 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/user.entity';
+import { RoleService } from '../users/role.service';
 import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +14,7 @@ export class AuthService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
+    private roleService: RoleService,
   ) {}
 
 
@@ -77,51 +80,45 @@ export class AuthService {
 
   /**
    * Register a new user
-   * Only the first user becomes admin, all others are blocked if admin exists
+   * First user becomes admin, subsequent users can be created by admins
    */
-  async signup(signupDto: any): Promise<any> {
+  async signup(signupDto: SignupDto): Promise<any> {
     // Check if user already exists
     const existingUser = await this.usersRepository.findOne({
       where: { login_id: signupDto.username }
     });
 
     if (existingUser) {
-      throw new UnauthorizedException('Username already exists');
+      throw new ConflictException('Username already exists');
     }
 
-    // Get or create admin role
-    const roleRepository = this.usersRepository.manager.getRepository('Role');
-    let adminRole = await roleRepository.findOne({ where: { role_name: 'admin' } });
-    
-    if (!adminRole) {
-      adminRole = roleRepository.create({
-        role_name: 'admin',
-        description: 'System Administrator',
-      });
-      await roleRepository.save(adminRole);
-    }
+    // Initialize default roles if they don't exist
+    await this.roleService.initializeDefaultRoles();
 
     // Check if any admin user already exists
+    const hasAdmin = await this.roleService.hasAdminRole();
+    const adminRole = await this.roleService.getAdminRole();
+    
+    // Check if there are any users with admin role
     const existingAdmin = await this.usersRepository.findOne({
       where: { role_id: adminRole.role_id }
     });
 
-    // If admin already exists, block the signup completely
-    if (existingAdmin) {
-      throw new UnauthorizedException('Admin already exists! Only one admin is allowed. Please contact the existing admin to create your account.');
-    }
+    // If no admin exists, first user becomes admin
+    const isFirstUser = !hasAdmin || !existingAdmin;
+    const userRole = isFirstUser ? adminRole : await this.roleService.findByName('dispatcher');
 
     // Hash password
     const hashedPassword = await bcrypt.hash(signupDto.password, 10);
 
-    // Create admin user (only the first user)
+    // Create user
     const newUser = this.usersRepository.create({
       login_id: signupDto.username,
       password_hash: hashedPassword,
       user_name: signupDto.name || signupDto.username,
       email: signupDto.email || `${signupDto.username}@example.com`,
       phone_number: signupDto.phone || '010-0000-0000',
-      role_id: adminRole.role_id, // First user = admin
+      role_id: userRole.role_id,
       status_code: 'ACTIVE',
     });
 
@@ -130,9 +127,14 @@ export class AuthService {
     // Return user data without password
     const { password_hash: _, ...result } = savedUser;
     return {
-      message: 'Admin account created successfully! You are now the system administrator.',
-      user: result,
-      isAdmin: true
+      message: isFirstUser 
+        ? 'Admin account created successfully! You are now the system administrator.'
+        : 'User account created successfully!',
+      user: {
+        ...result,
+        role_name: userRole.role_name,
+      },
+      isAdmin: isFirstUser
     };
   }
 

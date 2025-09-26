@@ -2,6 +2,7 @@ import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('Authentication')
@@ -33,7 +34,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 400, description: 'Username already exists' })
   @Post('signup')
-  async signup(@Body() signupDto: any) {
+  async signup(@Body() signupDto: SignupDto) {
     try {
       const result = await this.authService.signup(signupDto);
       return result;
