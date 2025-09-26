@@ -6,6 +6,9 @@ import { Client } from './client.entity';
 import { Asset } from './asset.entity';
 import { Waypoint } from './waypoint.entity';
 import { Settlement } from './settlement.entity';
+import { Emergency } from './emergency.entity';
+import { CreateEmergencyDto } from './dto/create-emergency.dto';
+import { UpdateEmergencyDto } from './dto/update-emergency.dto';
 
 @Injectable()
 export class KoreanTmsService {
@@ -20,6 +23,8 @@ export class KoreanTmsService {
     private waypointsRepository: Repository<Waypoint>,
     @InjectRepository(Settlement)
     private settlementsRepository: Repository<Settlement>,
+    @InjectRepository(Emergency)
+    private emergenciesRepository: Repository<Emergency>,
   ) {}
 
   async getKoreanTmsStats() {
@@ -64,12 +69,12 @@ export class KoreanTmsService {
         maintenanceAssets,
         pendingSettlements,
         completedSettlements,
-        totalAmount: totalAmount?.total || 0,
+        totalAmount:         totalAmount?.total || 0,
         orders: totalSettlements,
         pendingOrders: pendingSettlements,
         inTransitOrders: assignedAssets,
         completedOrders: completedSettlements,
-        emergencyOrders: 0
+        emergencyOrders: await this.emergenciesRepository.count({ where: { status: 'reported' } })
       };
     } catch (error) {
       console.error('Error fetching Korean TMS stats:', error);
@@ -315,4 +320,202 @@ export class KoreanTmsService {
       throw new BadRequestException('Failed to fetch daily statistics');
     }
   }
+
+  // Emergency Management Methods
+  async getAllEmergencies() {
+    try {
+      return await this.emergenciesRepository.find({
+        order: { reported_at: 'DESC' },
+        relations: ['asset', 'driver']
+      });
+    } catch (error) {
+      console.error('Error fetching emergencies:', error);
+      throw new BadRequestException('Failed to fetch emergencies');
+    }
+  }
+
+  async getEmergencyById(id: number) {
+    try {
+      const emergency = await this.emergenciesRepository.findOne({
+        where: { emergency_id: id },
+        relations: ['asset', 'driver']
+      });
+      
+      if (!emergency) {
+        throw new NotFoundException('Emergency not found');
+      }
+      
+      return emergency;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error fetching emergency:', error);
+      throw new BadRequestException('Failed to fetch emergency');
+    }
+  }
+
+  async createEmergency(emergencyData: CreateEmergencyDto) {
+    try {
+      const emergency = this.emergenciesRepository.create({
+        ...emergencyData,
+        priority: emergencyData.priority || 'medium',
+        status: 'reported',
+        reported_at: new Date(),
+        response_logs: [{
+          id: 1,
+          timestamp: new Date().toISOString(),
+          action: '신고 접수',
+          details: '비상 상황 신고가 접수되었습니다.'
+        }]
+      });
+      
+      return await this.emergenciesRepository.save(emergency);
+    } catch (error) {
+      console.error('Error creating emergency:', error);
+      throw new BadRequestException('Failed to create emergency');
+    }
+  }
+
+  async updateEmergency(id: number, updateData: UpdateEmergencyDto) {
+    try {
+      const emergency = await this.emergenciesRepository.findOne({
+        where: { emergency_id: id }
+      });
+      
+      if (!emergency) {
+        throw new NotFoundException('Emergency not found');
+      }
+
+      // Handle status transitions and logging
+      if (updateData.status && updateData.status !== emergency.status) {
+        const timestamp = new Date().toISOString();
+        const newLog = {
+          id: (emergency.response_logs?.length || 0) + 1,
+          timestamp,
+          action: this.getStatusActionText(updateData.status),
+          details: this.getStatusDetailsText(updateData.status)
+        };
+
+        updateData.response_logs = [
+          ...(emergency.response_logs || []),
+          newLog
+        ];
+
+        // Set timestamps based on status
+        if (updateData.status === 'investigating' || updateData.status === 'responding') {
+          updateData.response_started_at = new Date();
+        } else if (updateData.status === 'resolved') {
+          updateData.resolved_at = new Date();
+          if (emergency.response_started_at) {
+            const startTime = new Date(emergency.response_started_at);
+            const endTime = new Date();
+            updateData.response_time_minutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+          }
+        }
+      }
+
+      Object.assign(emergency, updateData);
+      return await this.emergenciesRepository.save(emergency);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error updating emergency:', error);
+      throw new BadRequestException('Failed to update emergency');
+    }
+  }
+
+  async deleteEmergency(id: number) {
+    try {
+      const emergency = await this.emergenciesRepository.findOne({
+        where: { emergency_id: id }
+      });
+      
+      if (!emergency) {
+        throw new NotFoundException('Emergency not found');
+      }
+
+      await this.emergenciesRepository.remove(emergency);
+      return { message: 'Emergency deleted successfully' };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error deleting emergency:', error);
+      throw new BadRequestException('Failed to delete emergency');
+    }
+  }
+
+  async getEmergenciesByStatus(status: string) {
+    try {
+      return await this.emergenciesRepository.find({
+        where: { status },
+        order: { reported_at: 'DESC' },
+        relations: ['asset', 'driver']
+      });
+    } catch (error) {
+      console.error('Error fetching emergencies by status:', error);
+      throw new BadRequestException('Failed to fetch emergencies by status');
+    }
+  }
+
+  async getEmergencyStats() {
+    try {
+      const [
+        totalEmergencies,
+        activeEmergencies,
+        resolvedToday,
+        avgResponseTime
+      ] = await Promise.all([
+        this.emergenciesRepository.count(),
+        this.emergenciesRepository.count({ where: { status: 'reported' } }),
+        this.emergenciesRepository.count({
+          where: {
+            status: 'resolved',
+            resolved_at: Between(
+              new Date(new Date().setHours(0, 0, 0, 0)),
+              new Date(new Date().setHours(23, 59, 59, 999))
+            )
+          }
+        }),
+        this.emergenciesRepository
+          .createQueryBuilder('emergency')
+          .select('AVG(emergency.response_time_minutes)', 'avg')
+          .where('emergency.response_time_minutes IS NOT NULL')
+          .getRawOne()
+      ]);
+
+      return {
+        totalEmergencies,
+        activeEmergencies,
+        resolvedToday,
+        avgResponseTime: Math.round(avgResponseTime?.avg || 0)
+      };
+    } catch (error) {
+      console.error('Error fetching emergency stats:', error);
+      throw new BadRequestException('Failed to fetch emergency statistics');
+    }
+  }
+
+  private getStatusActionText(status: string): string {
+    const statusMap: Record<string, string> = {
+      'reported': '신고 접수',
+      'investigating': '조사 시작',
+      'responding': '대응 시작',
+      'resolved': '해결 완료'
+    };
+    return statusMap[status] || status;
+  }
+
+  private getStatusDetailsText(status: string): string {
+    const detailsMap: Record<string, string> = {
+      'reported': '비상 상황 신고가 접수되었습니다.',
+      'investigating': '상황 조사가 시작되었습니다.',
+      'responding': '긴급 대응이 시작되었습니다.',
+      'resolved': '비상 상황이 해결되었습니다.'
+    };
+    return detailsMap[status] || '상태가 업데이트되었습니다.';
+  }
+
 }

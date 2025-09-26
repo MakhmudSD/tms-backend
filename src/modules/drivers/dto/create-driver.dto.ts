@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEmail, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsEmail, IsOptional, IsIn, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateDriverDto {
@@ -36,4 +36,9 @@ export class CreateDriverDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @ApiProperty({ description: 'Driver active status', example: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

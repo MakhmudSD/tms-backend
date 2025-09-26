@@ -3,6 +3,7 @@ import {
   Get, 
   Post, 
   Put, 
+  Delete,
   Param, 
   Body, 
   Query, 
@@ -17,6 +18,9 @@ import { Client } from './client.entity';
 import { Asset } from './asset.entity';
 import { Waypoint } from './waypoint.entity';
 import { Settlement } from './settlement.entity';
+import { Emergency } from './emergency.entity';
+import { CreateEmergencyDto } from './dto/create-emergency.dto';
+import { UpdateEmergencyDto } from './dto/update-emergency.dto';
 
 @ApiTags('Korean TMS')
 @Controller('korean-tms')
@@ -328,4 +332,149 @@ export class KoreanTmsController {
       };
     }
   }
+
+  // Emergency Management Endpoints
+  @Get('emergencies')
+  @ApiOperation({ summary: 'Get all emergencies' })
+  @ApiResponse({ status: 200, description: 'Emergencies retrieved successfully', type: [Emergency] })
+  async getEmergencies() {
+    try {
+      const emergencies = await this.koreanTmsService.getAllEmergencies();
+      return { 
+        success: true, 
+        message: `Retrieved ${emergencies.length} emergencies successfully`, 
+        data: emergencies 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message, 
+        data: null 
+      };
+    }
+  }
+
+  @Get('emergencies/stats')
+  @ApiOperation({ summary: 'Get emergency statistics' })
+  @ApiResponse({ status: 200, description: 'Emergency statistics retrieved successfully' })
+  async getEmergencyStats() {
+    try {
+      const stats = await this.koreanTmsService.getEmergencyStats();
+      return { 
+        success: true, 
+        message: 'Emergency statistics retrieved successfully', 
+        data: stats 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message, 
+        data: null 
+      };
+    }
+  }
+
+  @Get('emergencies/status/:status')
+  @ApiOperation({ summary: 'Get emergencies by status' })
+  @ApiResponse({ status: 200, description: 'Emergencies retrieved successfully', type: [Emergency] })
+  async getEmergenciesByStatus(@Param('status') status: string) {
+    try {
+      const emergencies = await this.koreanTmsService.getEmergenciesByStatus(status);
+      return { 
+        success: true, 
+        message: `Retrieved ${emergencies.length} emergencies with status '${status}'`, 
+        data: emergencies 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message, 
+        data: null 
+      };
+    }
+  }
+
+  @Get('emergencies/:id')
+  @ApiOperation({ summary: 'Get emergency by ID' })
+  @ApiResponse({ status: 200, description: 'Emergency retrieved successfully', type: Emergency })
+  async getEmergencyById(@Param('id', ParseIntPipe) id: number) {
+    try {
+      const emergency = await this.koreanTmsService.getEmergencyById(id);
+      return { 
+        success: true, 
+        message: 'Emergency retrieved successfully', 
+        data: emergency 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message, 
+        data: null 
+      };
+    }
+  }
+
+  @Post('emergencies')
+  @ApiOperation({ summary: 'Create a new emergency' })
+  @ApiResponse({ status: 201, description: 'Emergency created successfully', type: Emergency })
+  async createEmergency(@Body() emergencyData: CreateEmergencyDto) {
+    try {
+      const emergency = await this.koreanTmsService.createEmergency(emergencyData);
+      return { 
+        success: true, 
+        message: 'Emergency created successfully', 
+        data: emergency 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message, 
+        data: null 
+      };
+    }
+  }
+
+  @Put('emergencies/:id')
+  @ApiOperation({ summary: 'Update emergency' })
+  @ApiResponse({ status: 200, description: 'Emergency updated successfully', type: Emergency })
+  async updateEmergency(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateData: UpdateEmergencyDto
+  ) {
+    try {
+      const emergency = await this.koreanTmsService.updateEmergency(id, updateData);
+      return { 
+        success: true, 
+        message: 'Emergency updated successfully', 
+        data: emergency 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message, 
+        data: null 
+      };
+    }
+  }
+
+  @Delete('emergencies/:id')
+  @ApiOperation({ summary: 'Delete emergency' })
+  @ApiResponse({ status: 200, description: 'Emergency deleted successfully' })
+  async deleteEmergency(@Param('id', ParseIntPipe) id: number) {
+    try {
+      const result = await this.koreanTmsService.deleteEmergency(id);
+      return { 
+        success: true, 
+        message: result.message, 
+        data: null 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.message, 
+        data: null 
+      };
+    }
+  }
+
 }

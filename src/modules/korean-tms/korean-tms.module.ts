@@ -7,10 +7,11 @@ import { Client } from './client.entity';
 import { Asset } from './asset.entity';
 import { Waypoint } from './waypoint.entity';
 import { Settlement } from './settlement.entity';
+import { Emergency } from './emergency.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Branch, Client, Asset, Waypoint, Settlement]),
+    TypeOrmModule.forFeature([Branch, Client, Asset, Waypoint, Settlement, Emergency]),
   ],
   controllers: [KoreanTmsController],
   providers: [KoreanTmsService],

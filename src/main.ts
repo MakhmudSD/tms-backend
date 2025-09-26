@@ -19,8 +19,11 @@ async function bootstrap() {
   // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: true,
+    forbidNonWhitelisted: false, // Allow extra properties to be ignored
     transform: true,
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
   }));
 
   // Swagger API documentation

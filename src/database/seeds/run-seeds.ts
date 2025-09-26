@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
 import { seedUsers } from './user.seed';
+import { seedEmergencies } from './emergency.seed';
 
 // Load environment variables
 config();
@@ -15,6 +16,7 @@ import { Client } from '../../modules/korean-tms/client.entity';
 import { Asset } from '../../modules/korean-tms/asset.entity';
 import { Waypoint } from '../../modules/korean-tms/waypoint.entity';
 import { Settlement } from '../../modules/korean-tms/settlement.entity';
+import { Emergency } from '../../modules/korean-tms/emergency.entity';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -23,7 +25,7 @@ const dataSource = new DataSource({
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_DATABASE || 'postgres',
-  entities: [User, Role, Driver, Order, Branch, Client, Asset, Waypoint, Settlement],
+  entities: [User, Role, Driver, Order, Branch, Client, Asset, Waypoint, Settlement, Emergency],
   synchronize: false,
   logging: false,
 });
@@ -38,6 +40,7 @@ async function runSeeds() {
 
     // Run seed functions
     await seedUsers(dataSource);
+    await seedEmergencies(dataSource);
 
     console.log('🎉 Database seeding completed successfully!');
   } catch (error) {
