@@ -3,10 +3,8 @@ import { config } from 'dotenv';
 import { seedUsers } from './user.seed';
 import { seedEmergencies } from './emergency.seed';
 
-// Load environment variables
 config();
 
-// Import entities
 import { User } from '../../modules/users/user.entity';
 import { Role } from '../../modules/users/role.entity';
 import { Driver } from '../../modules/drivers/driver.entity';
@@ -34,11 +32,9 @@ async function runSeeds() {
   try {
     console.log('🌱 Starting database seeding...');
     
-    // Initialize the data source
     await dataSource.initialize();
     console.log('✅ Database connection established');
 
-    // Run seed functions
     await seedUsers(dataSource);
     await seedEmergencies(dataSource);
 
@@ -47,7 +43,6 @@ async function runSeeds() {
     console.error('❌ Error during seeding:', error);
     process.exit(1);
   } finally {
-    // Close the data source
     if (dataSource.isInitialized) {
       await dataSource.destroy();
       console.log('✅ Database connection closed');
@@ -55,5 +50,4 @@ async function runSeeds() {
   }
 }
 
-// Run the seeds
 runSeeds();

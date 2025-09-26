@@ -7,7 +7,6 @@ export async function seedUsers(dataSource: DataSource): Promise<void> {
   const userRepository = dataSource.getRepository(User);
   const roleRepository = dataSource.getRepository(Role);
 
-  // Check if admin role exists, if not create it
   let adminRole = await roleRepository.findOne({ where: { role_name: 'admin' } });
   if (!adminRole) {
     adminRole = roleRepository.create({

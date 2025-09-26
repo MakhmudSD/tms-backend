@@ -8,7 +8,6 @@ export async function seedEmergencies(dataSource: DataSource) {
   const assetRepository = dataSource.getRepository(Asset);
   const driverRepository = dataSource.getRepository(Driver);
 
-  // Get some existing assets and drivers for references
   const assets = await assetRepository.find({ take: 5 });
   const drivers = await driverRepository.find({ take: 5 });
 
@@ -156,10 +155,8 @@ export async function seedEmergencies(dataSource: DataSource) {
     }
   ];
 
-  // Clear existing emergencies
   await emergencyRepository.clear();
 
-  // Insert new emergency data
   for (const emergency of emergencyData) {
     const emergencyEntity = emergencyRepository.create(emergency);
     await emergencyRepository.save(emergencyEntity);

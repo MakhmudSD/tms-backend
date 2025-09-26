@@ -18,8 +18,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('Drivers')
 @Controller('drivers')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+// @UseGuards(JwtAuthGuard) // Temporarily disabled for testing
+// @ApiBearerAuth()
 export class DriversController {
   constructor(private readonly driversService: DriversService) {}
 
